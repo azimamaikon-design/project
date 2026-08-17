@@ -39,9 +39,10 @@ Deno.serve(async (req) => {
       return json({ error: 'AI пока не настроен. Попроси наставника проверить секрет.' }, 503);
     }
 
-    const body = (await req.json()) as { prompt?: unknown; system?: unknown };
+    const body = (await req.json()) as { prompt?: unknown; system?: unknown; format?: unknown };
     const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : '';
     const system = typeof body.system === 'string' ? body.system.trim() : '';
+    const writingEvaluation = body.format === 'writing_evaluation';
 
     if (!prompt) return json({ error: 'Напиши запрос для AI.' }, 400);
     if (prompt.length > 10_000 || system.length > 5_000) {
@@ -49,13 +50,29 @@ Deno.serve(async (req) => {
     }
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key':GEMINI_API_KEY },
         body: JSON.stringify({
           systemInstruction: system ? { parts: [{ text: system }] } : undefined,
           contents: [{ parts: [{ text: prompt }] }],
+          generationConfig:{
+            maxOutputTokens:writingEvaluation ? 2200 : 1200,
+            thinkingConfig:{ thinkingLevel:writingEvaluation ? 'LOW' : 'MINIMAL' },
+            ...(writingEvaluation ? {
+              responseMimeType:'application/json',
+              responseSchema:{
+                type:'OBJECT',
+                properties:{
+                  scores:{ type:'OBJECT', properties:{ task:{type:'INTEGER'}, organisation:{type:'INTEGER'}, grammar:{type:'INTEGER'}, vocabulary:{type:'INTEGER'} }, required:['task','organisation','grammar','vocabulary'] },
+                  feedback:{ type:'STRING' },
+                  improvedVersion:{ type:'STRING' },
+                },
+                required:['scores','feedback','improvedVersion'],
+              },
+            } : {}),
+          },
         }),
       },
     );
@@ -66,8 +83,8 @@ Deno.serve(async (req) => {
       return json({ error: 'AI сейчас не ответил. Попробуй ещё раз чуть позже.' }, 502);
     }
 
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (typeof text !== 'string' || !text.trim()) {
+    const text = data?.candidates?.[0]?.content?.parts?.map((part) => part.text).filter((part): part is string => typeof part === 'string').join('').trim();
+    if (!text) {
       console.error('Gemini returned an empty response', data);
       return json({ error: 'AI вернул пустой ответ. Попробуй переформулировать запрос.' }, 502);
     }
