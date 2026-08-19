@@ -5,7 +5,7 @@ import { isSupabaseConfigured, supabase } from '../lib/supabase';
 
 type SiteHeaderProps = { language: Language; onLanguageChange: () => void };
 
-export function SiteHeader({ language, onLanguageChange }: SiteHeaderProps) {
+export function SiteHeader({ language }: SiteHeaderProps) {
   const [email, setEmail] = useState<string>();
   const [menuOpen, setMenuOpen] = useState(false);
   const isRu = language === 'RU';
@@ -39,7 +39,6 @@ export function SiteHeader({ language, onLanguageChange }: SiteHeaderProps) {
         <Link href="/course" onClick={closeMenu}>{language === 'RU' ? 'Программа' : 'Бағдарлама'}</Link>
         <Link href="/assistant" onClick={closeMenu}>Echo AI</Link>
         {email ? <div className="account-menu"><Link href="/results" onClick={closeMenu}>{isRu ? 'Результаты' : 'Нәтижелер'}</Link><span title={email}>{email}</span><button onClick={signOut} type="button">{isRu ? 'Выйти' : 'Шығу'}</button></div> : <Link className="login-link" href="/auth" onClick={closeMenu}>{isRu ? 'Войти' : 'Кіру'}</Link>}
-        <button className="language-button" onClick={onLanguageChange} type="button">{language} <span>⌄</span></button>
       </nav>
     </header>
   );
