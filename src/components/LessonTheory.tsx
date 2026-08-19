@@ -6,6 +6,17 @@ import { VoiceControls } from './VoiceControls';
 
 type Props = { language: Language; level: CourseLevel; lessonIndex: number; onContinue: () => void };
 
+function theorySpeech(language: Language, theory: ReturnType<typeof getLessonTheory>) {
+  const isRu = language === 'RU';
+  return [
+    isRu ? `Тема урока. ${theory.goal}` : `Бүгінгі сабақтың тақырыбы. ${theory.goal}`,
+    ...theory.explanation,
+    isRu ? `Значение примера. ${theory.examples[0].translation}` : `Мысалдың мағынасы. ${theory.examples[0].translation}`,
+    isRu ? `Частая ошибка. ${theory.mistake}` : `Жиі кездесетін қате. ${theory.mistake}`,
+    isRu ? `Совет Echo. ${theory.tip}` : `Echo кеңесі. ${theory.tip}`,
+  ].join(' ');
+}
+
 export function LessonTheory({ language, level, lessonIndex, onContinue }: Props) {
   const theory = getLessonTheory(level, lessonIndex, language);
   const isRu = language === 'RU';
@@ -19,7 +30,7 @@ export function LessonTheory({ language, level, lessonIndex, onContinue }: Props
       question:'',
     },
   };
-  const speech = [theory.goal, ...theory.explanation, theory.formula, theory.tip].join(' ');
+  const speech = theorySpeech(language, theory);
 
   return (
     <section className="theory-card">

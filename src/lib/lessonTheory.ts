@@ -1,6 +1,6 @@
 import type { CourseLevel } from './courseData';
 import type { Language } from './language';
-import { a1TheoryKz, defaultTheoryKz } from './lessonTheoryKz';
+import { a1TheoryKz, a2TheoryKz, b1TheoryKz, defaultTheoryKz, practiceTheoryKz } from './lessonTheoryKz';
 import { b2TheoryKz, b2TheoryRu } from './b2Theory';
 
 export type Theory = {
@@ -81,7 +81,6 @@ const defaults: Record<CourseLevel, Theory> = {
 export function getLessonTheory(level: CourseLevel, lessonIndex: number, language: Language) {
   const theory = level === 'A1' ? a1Ru[lessonIndex] ?? defaults.A1 : level === 'B2' ? b2TheoryRu[lessonIndex] ?? defaults.B2 : defaults[level];
   if (language === 'RU') return theory;
-  if (level === 'A1') return a1TheoryKz[lessonIndex] ?? a1TheoryKz[0];
-  if (level === 'B2') return b2TheoryKz[lessonIndex] ?? defaultTheoryKz.B2;
-  return defaultTheoryKz[level];
+  const core = level === 'A1' ? a1TheoryKz : level === 'A2' ? a2TheoryKz : level === 'B1' ? b1TheoryKz : b2TheoryKz;
+  return core[lessonIndex] ?? practiceTheoryKz[lessonIndex - 7] ?? defaultTheoryKz[level];
 }

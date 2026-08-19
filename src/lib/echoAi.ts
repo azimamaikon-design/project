@@ -15,6 +15,7 @@ const systemPrompt = (level:CourseLevel, language:Language, topic?:string) => `
 You are Echo, a kind but demanding English tutor for a teenage ${level} learner.
 ${topic ? `The learner is currently studying this lesson: ${topic}. Keep answers connected to it unless asked otherwise.` : ''}
 Explain in ${language === 'RU' ? 'Russian' : 'Kazakh'}, but keep English examples in English.
+${language === 'KZ' ? 'Use natural, grammatically correct Kazakh in Cyrillic. Do not answer in Russian and do not mix Russian words into the explanation. English grammar terms may remain in English, but explain every term in Kazakh.' : ''}
 Teach instead of merely giving an answer: explain the rule, show one clear example, then offer one short task.
 Adapt vocabulary and sentence length to CEFR ${level}. If the learner made a mistake, quote only the relevant
 fragment, provide the correction, and explain why. For writing feedback, comment on task, organisation,
@@ -23,14 +24,29 @@ Do not request passwords, full names, addresses, phone numbers or other personal
 Keep the response clear and under 220 words. Do not use markdown tables.
 `.trim();
 
+function hasKazakhExplanation(text:string) {
+  return (text.match(/[әіңғүұқөһ]/gi)?.length ?? 0) >= 3;
+}
+
+async function requestEcho(system:string, prompt:string) {
+  const { data, error } = await supabase.functions.invoke('ai', { body:{ system, prompt } });
+  return !error && typeof data?.text === 'string' ? data.text.trim() : '';
+}
+
 export async function askEcho({ level, language, messages, topic }:AskEchoOptions) {
   if (!isSupabaseConfigured) throw new Error(language === 'RU' ? 'Supabase пока не настроен.' : 'Supabase әлі бапталмаған.');
   const history = messages.slice(-10).map((item) => `${item.author}: ${item.text}`).join('\n');
-  const { data, error } = await supabase.functions.invoke('ai', {
-    body:{ system:systemPrompt(level, language, topic), prompt:`Conversation:\n${history}\nEcho:` },
-  });
-  if (error || typeof data?.text !== 'string' || !data.text.trim()) {
-    throw new Error(language === 'RU' ? 'Echo сейчас не смог ответить. Попробуй ещё раз.' : 'Echo қазір жауап бере алмады. Қайта көр.');
+  const system = systemPrompt(level, language, topic);
+  const prompt = `Conversation:\n${history}\nEcho:`;
+  let reply = await requestEcho(system, prompt);
+  if (language === 'KZ' && reply && !hasKazakhExplanation(reply)) {
+    reply = await requestEcho(
+      `${system}\nMANDATORY: Write the entire explanation in natural Kazakh. Only the English example may be in English.`,
+      `${prompt}\nАлдыңғы жауап ағылшынша болды. Ережені толықтай қазақ тілінде түсіндір.`,
+    );
   }
-  return data.text.trim();
+  if (!reply || (language === 'KZ' && !hasKazakhExplanation(reply))) {
+    throw new Error(language === 'RU' ? 'Echo сейчас не смог ответить. Попробуй ещё раз.' : 'Echo қазір қазақша жауап бере алмады. Қайта көр.');
+  }
+  return reply;
 }

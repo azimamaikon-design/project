@@ -25,7 +25,7 @@ export function VoiceControls({ language, text, speechLanguage = 'en-US', onFini
         {rates.map((value) => <button className={rate === value ? 'speed speed--active' : 'speed'} onClick={() => setRate(value)} type="button" key={value}>{value}×</button>)}
       </div>
       {voiceName && <span className="voice-name" title={voiceName}>{voiceLabel}</span>}
-      {speechLanguage.startsWith('kk') && !hasMatchingVoice && <p className="voice-notice">Қазақ дауысы құрылғыда жоқ — қосалқы дауыс қолданылды.</p>}
+      {speechLanguage.startsWith('kk') && !hasMatchingVoice && <p className="voice-notice">Құрылғыда қазақ дауысы жоқ. Echo қазақша мәтінді кирилл даусымен оқиды; анық айтылым үшін Microsoft Edge қолдан.</p>}
       {speechError && <p className="voice-notice voice-notice--error">{isRu ? 'Не удалось запустить голос. Попробуй Edge.' : 'Дауыс қосылмады. Edge браузерінде байқап көр.'}</p>}
     </div>
   );
