@@ -14,14 +14,8 @@ function chooseVoice(voices: SpeechSynthesisVoice[], language: string) {
   const languageCode = language.slice(0, 2).toLowerCase();
   const matchingVoices = voices.filter((voice) => voice.lang.toLowerCase().startsWith(languageCode));
   const exactVoice = [...matchingVoices].sort((first, second) => voiceScore(second, language) - voiceScore(first, language))[0];
-  if (exactVoice) return { voice:exactVoice, hasMatchingVoice:true, spokenLanguage:language };
-  if (language.startsWith('kk')) {
-    const cyrillicVoice = voices
-      .filter((voice) => voice.lang.toLowerCase().startsWith('ru'))
-      .sort((first, second) => voiceScore(second, 'ru-RU') - voiceScore(first, 'ru-RU'))[0];
-    return { voice:cyrillicVoice, hasMatchingVoice:false, spokenLanguage:'ru-RU' };
-  }
-  return { voice:undefined, hasMatchingVoice:false, spokenLanguage:language };
+  if (exactVoice) return { voice:exactVoice, hasMatchingVoice:true };
+  return { voice:undefined, hasMatchingVoice:false };
 }
 
 function prepareSpeech(text: string, language: string) {
@@ -44,7 +38,6 @@ export function useSpeech(language = 'en-US') {
   const [rate, setRate] = useState(0.9);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voice, setVoice] = useState<SpeechSynthesisVoice>();
-  const [spokenLanguage, setSpokenLanguage] = useState(language);
   const [hasMatchingVoice, setHasMatchingVoice] = useState(false);
   const [speechError, setSpeechError] = useState(false);
   const speechRun = useRef(0);
@@ -56,7 +49,6 @@ export function useSpeech(language = 'en-US') {
       const selected = chooseVoice(window.speechSynthesis.getVoices(), language);
       setVoice(selected.voice);
       setHasMatchingVoice(selected.hasMatchingVoice);
-      setSpokenLanguage(selected.spokenLanguage);
     };
     loadVoices();
     const retry = window.setTimeout(loadVoices, 800);
@@ -69,7 +61,7 @@ export function useSpeech(language = 'en-US') {
   }, [isSupported, language]);
 
   const speak = (text: string, onFinished?: () => void) => {
-    if (!isSupported) return;
+    if (!isSupported || (language.startsWith('kk') && !hasMatchingVoice)) return;
     speechRun.current += 1;
     const currentRun = speechRun.current;
     setSpeechError(false);
@@ -87,7 +79,7 @@ export function useSpeech(language = 'en-US') {
         return;
       }
       const utterance = new SpeechSynthesisUtterance(chunks[index]);
-      utterance.lang = spokenLanguage;
+      utterance.lang = language;
       utterance.rate = rate;
       utterance.pitch = 1;
       if (voice) utterance.voice = voice;

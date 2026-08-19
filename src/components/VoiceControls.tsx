@@ -15,6 +15,10 @@ export function VoiceControls({ language, text, speechLanguage = 'en-US', onFini
     return <p className="voice-unavailable">{isRu ? 'Озвучка не поддерживается этим браузером.' : 'Бұл браузер дыбыстауды қолдамайды.'}</p>;
   }
 
+  if (speechLanguage.startsWith('kk') && !hasMatchingVoice) {
+    return <p className="voice-unavailable">Қазақша дауыс бұл браузерде жоқ. Сілтемені Microsoft Edge браузерінде аш — Echo қазақша анық сөйлейді.</p>;
+  }
+
   return (
     <div className="voice-controls">
       <button className={isSpeaking ? 'speak-button speak-button--active' : 'speak-button'} onClick={() => speak(text, onFinished)} type="button">
@@ -25,7 +29,6 @@ export function VoiceControls({ language, text, speechLanguage = 'en-US', onFini
         {rates.map((value) => <button className={rate === value ? 'speed speed--active' : 'speed'} onClick={() => setRate(value)} type="button" key={value}>{value}×</button>)}
       </div>
       {voiceName && <span className="voice-name" title={voiceName}>{voiceLabel}</span>}
-      {speechLanguage.startsWith('kk') && !hasMatchingVoice && <p className="voice-notice">Құрылғыда қазақ дауысы жоқ. Echo қазақша мәтінді кирилл даусымен оқиды; анық айтылым үшін Microsoft Edge қолдан.</p>}
       {speechError && <p className="voice-notice voice-notice--error">{isRu ? 'Не удалось запустить голос. Попробуй Edge.' : 'Дауыс қосылмады. Edge браузерінде байқап көр.'}</p>}
     </div>
   );
