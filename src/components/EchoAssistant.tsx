@@ -1,9 +1,11 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { askEcho, type EchoMessage } from '../lib/echoAi';
 import type { CourseLevel } from '../lib/courseData';
 import type { Language } from '../lib/language';
 import { containsProfanity, warningMessage } from '../lib/conversationSafety';
 import { VoiceControls } from './VoiceControls';
+import { AiMessageContent } from './AiMessageContent';
+import { cleanAiText } from '../lib/aiText';
 
 type Props = { language:Language; initialLevel?:CourseLevel; topic?:string };
 const levels: CourseLevel[] = ['A1','A2','B1','B2'];
@@ -18,10 +20,17 @@ export function EchoAssistant({ language, initialLevel = 'A1', topic }:Props) {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const conversationRef = useRef<HTMLDivElement>(null);
   const isRu = language === 'RU';
   const suggestions = isRu
-    ? ['Объясни разницу времён на одном примере','Проверь моё английское предложение','Создай 5 заданий по моей теме']
+    ? ['Объясни разницу времён на одном примере','Проверь моё английское предложение','Создай персональный мини-урок по моей слабой теме: объяснение, пример и 3 задания без ответов']
     : ['Шақтардың айырмасын бір мысалмен түсіндір','Ағылшын сөйлемімді тексер','Менің тақырыбыма 5 тапсырма құрастыр'];
+
+  useEffect(() => {
+    const conversation = conversationRef.current;
+    if (!conversation) return;
+    requestAnimationFrame(() => conversation.scrollTo({ top:conversation.scrollHeight, behavior:'smooth' }));
+  }, [messages, busy, error]);
 
   const send = async (event?:FormEvent, suggested?:string) => {
     event?.preventDefault();
@@ -45,8 +54,8 @@ export function EchoAssistant({ language, initialLevel = 'A1', topic }:Props) {
     <section className="assistant-card">
       <div className="assistant-settings"><label>{isRu ? 'Твой уровень' : 'Сенің деңгейің'}<select value={level} onChange={(event) => setLevel(event.target.value as CourseLevel)}>{levels.map((item) => <option key={item}>{item}</option>)}</select></label><span>{topic ? `${isRu ? 'Тема' : 'Тақырып'}: ${topic}` : (isRu ? 'Echo подстроит сложность ответа' : 'Echo жауап күрделілігін бейімдейді')}</span></div>
       <div className="assistant-suggestions">{suggestions.map((item) => <button disabled={busy} onClick={() => void send(undefined, item)} type="button" key={item}>{item}</button>)}</div>
-      <div className="assistant-conversation" aria-live="polite">
-        {messages.map((message, index) => <article className={`assistant-message assistant-message--${message.author}`} key={`${index}-${message.text}`}><small>{message.author === 'echo' ? 'Echo AI' : (isRu ? 'Ты' : 'Сен')}</small><p>{message.text}</p>{message.author === 'echo' && <VoiceControls language={language} text={message.text} speechLanguage={isRu ? 'ru-RU' : 'kk-KZ'} />}</article>)}
+      <div className="assistant-conversation" aria-live="polite" ref={conversationRef}>
+        {messages.map((message, index) => <article className={`assistant-message assistant-message--${message.author}`} key={`${index}-${message.text}`}><small>{message.author === 'echo' ? 'Echo AI' : (isRu ? 'Ты' : 'Сен')}</small><AiMessageContent text={message.text} />{message.author === 'echo' && <VoiceControls language={language} text={cleanAiText(message.text)} speechLanguage={isRu ? 'ru-RU' : 'kk-KZ'} />}</article>)}
         {busy && <p className="typing">Echo {isRu ? 'готовит объяснение' : 'түсіндірме дайындап жатыр'}…</p>}
       </div>
       {error && <p className="mic-error">{error}</p>}

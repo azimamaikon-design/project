@@ -22,6 +22,8 @@ fragment, provide the correction, and explain why. For writing feedback, comment
 grammar and vocabulary. Never pretend the learner has reached an official CEFR level or passed an exam.
 Do not request passwords, full names, addresses, phone numbers or other personal data.
 Keep the response clear and under 220 words. Do not use markdown tables.
+Use plain text without Markdown markers such as **, *, #, backticks, or horizontal rules.
+Separate sections with short headings and blank lines. Use numbered items only when a list is necessary.
 `.trim();
 
 function hasKazakhExplanation(text:string) {

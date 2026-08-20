@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CourseLevel } from '../lib/courseData';
 import type { Language } from '../lib/language';
 import type { SpeakingActivity } from '../lib/practiceData';
@@ -7,6 +7,8 @@ import { useSpeechRecognition } from '../lib/useSpeechRecognition';
 import { VoiceControls } from './VoiceControls';
 import { containsProfanity, contextualFallbackQuestion, isRepeatedReply, warningMessage } from '../lib/conversationSafety';
 import { difficultyRules } from '../lib/courseDifficulty';
+import { AiMessageContent } from './AiMessageContent';
+import { cleanAiText } from '../lib/aiText';
 
 type Props = { activity: SpeakingActivity; language: Language; level: CourseLevel; onResult?:(score:number,total:number)=>void };
 type Message = { author: 'echo' | 'student'; text: string };
@@ -22,8 +24,15 @@ export function SpeakingPractice({ activity, language, level, onResult }: Props)
   const [isReplying, setIsReplying] = useState(false);
   const [turns, setTurns] = useState(0);
   const speech = useSpeechRecognition();
+  const conversationRef = useRef<HTMLDivElement>(null);
   const isRu = language === 'RU';
   const minimumWords = difficultyRules[level].speakingWords;
+
+  useEffect(() => {
+    const conversation = conversationRef.current;
+    if (!conversation) return;
+    requestAnimationFrame(() => conversation.scrollTo({ top:conversation.scrollHeight, behavior:'smooth' }));
+  }, [messages, isReplying]);
 
   const send = async () => {
     const answer = speech.transcript.trim();
@@ -51,7 +60,7 @@ export function SpeakingPractice({ activity, language, level, onResult }: Props)
       setMessages((items) => [...items, { author:'echo', text:contextualFallbackQuestion(level, answer, previousEchoMessages) }]); setIsReplying(false); return;
     }
     const { data, error } = await supabase.functions.invoke('ai', { body: {
-      system: `You are Echo, a firm but kind English tutor speaking with a ${level} learner. Your task is to ask exactly one new question based directly on the learner's latest answer. Mention or refer to a detail from that answer. Use simple English at ${level} level. You may first correct one important mistake in one short sentence. Read the full history and NEVER repeat, paraphrase, or reuse an earlier question. Do not give a generic unrelated question. If the learner uses profanity, require respectful language.`,
+      system: `You are Echo, a firm but kind English tutor speaking with a ${level} learner. Your task is to ask exactly one new question based directly on the learner's latest answer. Mention or refer to a detail from that answer. Use simple English at ${level} level. You may first correct one important mistake in one short sentence. Read the full history and NEVER repeat, paraphrase, or reuse an earlier question. Do not give a generic unrelated question. If the learner uses profanity, require respectful language. Return plain text without Markdown symbols.`,
       prompt: `${activity.situation}\nConversation:\n${history}\nstudent: ${answer}\nEcho:`,
     } });
     const aiReply = !error && typeof data?.text === 'string' ? data.text.trim() : '';
@@ -67,8 +76,8 @@ export function SpeakingPractice({ activity, language, level, onResult }: Props)
       <div className="speaking-progress"><span style={{ width:`${turns / 5 * 100}%` }} /><strong>{turns}/5</strong></div>
       <div className="prompt-chips">{activity.prompts.map((prompt) => <span key={prompt}>{prompt}</span>)}</div>
       <p className="speaking-requirement">{isRu ? `Каждый ответ: минимум ${minimumWords} английских слов.` : `Әр жауапта кемінде ${minimumWords} ағылшын сөзі болуы керек.`}</p>
-      <div className="conversation">
-        {messages.map((message, index) => <div className={`message-bubble message-bubble--${message.author}`} key={`${message.text}-${index}`}><small>{message.author === 'echo' ? 'Echo' : (isRu ? 'Ты' : 'Сен')}</small><p>{message.text}</p>{message.author === 'echo' && <VoiceControls language={language} text={message.text} speechLanguage={messageLanguage(message.text)} />}</div>)}
+      <div className="conversation" ref={conversationRef}>
+        {messages.map((message, index) => <div className={`message-bubble message-bubble--${message.author}`} key={`${message.text}-${index}`}><small>{message.author === 'echo' ? 'Echo' : (isRu ? 'Ты' : 'Сен')}</small><AiMessageContent text={message.text} />{message.author === 'echo' && <VoiceControls language={language} text={cleanAiText(message.text)} speechLanguage={messageLanguage(message.text)} />}</div>)}
         {isReplying && <p className="typing">Echo {isRu ? 'думает' : 'ойланып жатыр'}…</p>}
       </div>
       {turns < 5 && (!speech.isSupported ? <p className="mic-error">{isRu ? 'Распознавание речи недоступно. Открой сайт в Chrome или Edge.' : 'Сөйлеуді тану қолжетімсіз. Сайтты Chrome немесе Edge браузерінде аш.'}</p> : (
